@@ -118,15 +118,32 @@ def attendance_append():
     first = data.get('first', '').strip()
     last = data.get('last', '').strip()
     ts = data.get('time') or datetime.utcnow().isoformat()
+    session = str(data.get('session') or '').strip()
 
     os.makedirs('attendance', exist_ok=True)
     path = os.path.join('attendance', 'attendance.csv')
-    line = f'"{email}","{first}","{last}","{ts}"\n'
     try:
         with file_lock:
+            if email:
+                dup = None
+                if os.path.exists(path):
+                    with open(path, 'r', encoding='utf-8') as f:
+                        for line_item in f:
+                            parts = [p.strip().strip('"') for p in line_item.split(',')]
+                            if not parts:
+                                continue
+                            prior_session = parts[4] if len(parts) > 4 else ''
+                            if parts[0] != email:
+                                continue
+                            if session and prior_session and prior_session != session:
+                                continue
+                            dup = parts[3] if len(parts) > 3 else ''
+                            break
+                if dup is not None:
+                    return jsonify({'ok': True, 'duplicate': True, 'first_seen': dup})
             with open(path, 'a', encoding='utf-8') as f:
-                f.write(line)
-        return jsonify({'ok': True})
+                f.write(f'"{email}","{first}","{last}","{ts}","{session}"\n')
+        return jsonify({'ok': True, 'duplicate': False})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 
@@ -146,7 +163,8 @@ def attendance_list():
                         continue
                     while len(parts) < 4:
                         parts.append('')
-                    items.append({'email': parts[0], 'first': parts[1], 'last': parts[2], 'time': parts[3]})
+                    items.append({'email': parts[0], 'first': parts[1], 'last': parts[2], 'time': parts[3],
+                                  'session': parts[4] if len(parts) > 4 else ''})
         return jsonify({'ok': True, 'items': items})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500

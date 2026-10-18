@@ -4,32 +4,35 @@
 
 Summary
 -------
-This small project provides a single-file HTTP server (`server.py`) that accepts JSON POST requests to test SMTP connectivity (`/test`) and to send QR code emails to a list of participants (`/send`). The server also serves the local frontend files (for convenience) from the current working directory.
+This project provides a local Flask app (`flask_server.py`) that serves the attendance UI
+(Participants / QR & Email / Scanner), accepts JSON POST requests to test SMTP
+connectivity (`/test`) and to send QR code emails to participants (`/send`), and records
+check-ins (`/attendance/append`) with per-session dedupe.
 
 Quick requirements
 ------------------
 - Python 3.10+
-- Optional: `qrcode` and `pillow` if you want the server to generate QR images on demand.
+- Dependencies: `pip install -r requirements.txt`
+  (Flask, qrcode, pillow; opencv is only needed for the optional live camera scanner and
+  is guarded so the app still boots without it)
 
-Install dependencies (optional)
+Install dependencies
 ------------------------------
-Install the optional packages if you need QR generation:
-
 ```bash
 python -m pip install -r requirements.txt
 ```
 
 Quick start
 -----------
-Run the server from the project root:
+Run the app from the project root:
 
 ```bash
-python server.py
+python flask_server.py
 ```
 
-Open your browser at http://localhost:5050 (the server will serve `index.html` when available).
+Open your browser at http://localhost:5000/index.html.
 
-Run the server in an isolated folder (prevents the server serving unrelated project files):
+Run the app in an isolated folder (prevents the server serving unrelated project files):
 
 ```bash
 python launch_server_clean.py

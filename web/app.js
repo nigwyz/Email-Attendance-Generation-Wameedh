@@ -316,7 +316,7 @@ document.getElementById('testEmailBtn').addEventListener('click', async () => {
     }
   } catch (e) {
     logLine('✗ Could not reach local server.', 'err');
-    logLine('ℹ Make sure server.py is running:  python server.py', 'info');
+    logLine('ℹ Make sure the server is running:  python flask_server.py', 'info');
     toast('Local server not running — see log', 'error');
   } finally {
     document.getElementById('testEmailBtn').disabled = false;
@@ -358,7 +358,7 @@ document.getElementById('sendAllBtn').addEventListener('click', async () => {
     }
   } catch (e) {
     logLine('✗ Could not reach local server.', 'err');
-    logLine('ℹ Run:  python server.py', 'info');
+    logLine('ℹ Run:  python flask_server.py', 'info');
     toast('Local server not running — see log', 'error');
   } finally {
     document.getElementById('sendAllBtn').disabled = false;
@@ -601,17 +601,22 @@ function removeSpaces(s) { return s.replace(/\s+/g, '').toLowerCase(); }
 
 async function persistAttendance(p) {
   try {
-    await fetch(FLASK_API + '/attendance/append', {
+    const res = await fetch(FLASK_API + '/attendance/append', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: p.email, first: p.first, last: p.last, time: p.checkedAt })
+      body: JSON.stringify({
+        email: p.email, first: p.first, last: p.last, time: p.checkedAt,
+        session: document.getElementById('globalSession').value
+      })
     });
+    return await res.json();
   } catch (e) {
     console.warn('Could not persist attendance:', e);
+    return null;
   }
 }
 
-function handleScan(name) {
+async function handleScan(name) {
   if (name !== lastName) {
     lastName = name;
     lastNameLogCount = 0;
@@ -657,7 +662,12 @@ function handleScan(name) {
   maybeLogOnce(name, 'ok', 'Checked in ✓');
   showResultFlash('✓', name, 'Welcome! Checked in', 'ok');
   renderTable();
-  persistAttendance(p);
+  const saved = await persistAttendance(p);
+  if (saved && saved.duplicate) {
+    const at = (saved.first_seen || '').slice(11, 16);
+    maybeLogOnce(name, 'ok', `Duplicate blocked — already logged${at ? ' at ' + at : ''}`);
+    showResultFlash('⏱', name, 'Already logged on server — duplicate blocked', 'ok');
+  }
 }
 
 function maybeLogOnce(name, type, status) {
@@ -719,7 +729,7 @@ document.getElementById('exportAttendanceBtn').addEventListener('click', async (
       const data = await r.json();
       const items = data.items || (Array.isArray(data) ? data : []);
       if (items.length) {
-        const rows = items.map(it => [it.email, it.first, it.last, it.time || ''].join(','));
+        const rows = items.map(it => [it.email, it.first, it.last, it.time || '', it.session || ''].join(','));
         downloadText(rows.join('\n'), 'attendance.csv', 'text/csv');
         toast('Saved attendance.csv downloaded', 'success');
         return;
