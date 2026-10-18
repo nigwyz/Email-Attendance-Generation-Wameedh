@@ -6,3 +6,5 @@ qr_out/
 attendance_result*.csv
 .env
 config.json
+server_isolated/
+attendance/
