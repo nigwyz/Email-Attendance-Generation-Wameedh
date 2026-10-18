@@ -1,5 +1,4 @@
+flask
 qrcode
 pillow
-flask
-opencv-python
-pyzbar
+opencv-python-headless

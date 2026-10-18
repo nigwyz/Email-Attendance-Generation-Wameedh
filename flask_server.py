@@ -11,8 +11,12 @@ try:
     import server as email_server
 except Exception:
     email_server = None
-import cv2
-from pyzbar.pyzbar import decode
+try:
+    import cv2
+except ImportError:
+    cv2 = None
+
+qr_detector = cv2.QRCodeDetector() if cv2 else None
 
 app = Flask(__name__, static_folder='web', static_url_path='')
 
@@ -36,6 +40,9 @@ camera_running = False
 
 def camera_loop(index=0, target_width=640):
     global last_frame, last_detection, camera_running
+    if cv2 is None:
+        print("Camera disabled: opencv not installed")
+        return
     cap = cv2.VideoCapture(index)
     if not cap.isOpened():
         print("Camera not opened at index", index)
@@ -62,14 +69,10 @@ def camera_loop(index=0, target_width=640):
             cropped = frame[top:bottom, left:right]
 
             gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
-            decoded = decode(gray)
-            if decoded:
-                try:
-                    data = decoded[0].data.decode('utf-8')
-                    with frame_lock:
-                        last_detection = {"data": data, "time": time.time()}
-                except Exception as e:
-                    print('Decode error:', e)
+            data = qr_detector.detectAndDecode(gray)[0]
+            if data:
+                with frame_lock:
+                    last_detection = {"data": data, "time": time.time()}
 
             # Mirror image for a natural preview feel
             display = cv2.flip(cropped, 1)
@@ -191,6 +194,8 @@ def frame_jpg():
 
 @app.route('/stream.mjpg')
 def stream_mjpg():
+    if cv2 is None:
+        return jsonify({'ok': False, 'error': 'camera disabled: opencv not installed'}), 501
     def generate():
         while not stop_event.is_set():
             with frame_lock:
@@ -227,6 +232,8 @@ def status():
 
 @app.route('/camera/start', methods=['POST'])
 def camera_start():
+    if cv2 is None:
+        return jsonify({'ok': False, 'error': 'camera disabled: opencv not installed'}), 501
     started = start_camera()
     return jsonify({'ok': True, 'started': started, 'camera_running': camera_running})
 

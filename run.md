@@ -5,6 +5,10 @@ source .venv/bin/activate
 # install deps
 pip install -r requirements.txt
 
+# notes:
+#   QR decoding uses OpenCV's built-in QRCodeDetector (pyzbar/libzbar is no longer needed)
+#   QRScanner_fixed.py is a legacy Kivy desktop app (would need python-kivy separately) — not covered by requirements.txt
+
 # run server (or use existing .venv python)
 python flask_server.py
 # or, if you already have the configured venv:
